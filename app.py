@@ -7,6 +7,7 @@ import dateutil.parser
 import hmac
 import hashlib
 import json
+import logging
 import os
 import requests
 
@@ -107,3 +108,6 @@ def handle_webhook():
                     (order['_orderNumber']))
 
     return ('Webhook verified & forwarded', 200)
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0')
