@@ -17,11 +17,13 @@ app = Flask(__name__)
 DEFAULT_SECRET = '123changeme'
 SHOPIFY_SIGNING_SECRET = os.getenv('SHOPIFY_SIGNING_SECRET', DEFAULT_SECRET)
 UPWARD_API_KEY = os.getenv('UPWARD_API_KEY', DEFAULT_SECRET)
-UPWARD_API_URL = os.getenv('UPWARD_API_URL', 'https://sandbox.upwardlogistics.net/v1/')
+UPWARD_API_URL = os.getenv(
+    'UPWARD_API_URL', 'https://sandbox.upwardlogistics.net/v1/')
 
 
 def verify_webhook(data, hmac_header):
-    digest = hmac.new(SHOPIFY_SIGNING_SECRET.encode('utf-8'), data, hashlib.sha256).digest()
+    digest = hmac.new(SHOPIFY_SIGNING_SECRET.encode(
+        'utf-8'), data, hashlib.sha256).digest()
     computed_hmac = base64.b64encode(digest)
 
     return hmac.compare_digest(computed_hmac, hmac_header.encode('utf-8'))
@@ -39,18 +41,14 @@ def extract_shipment_info(order_data):
         'shipToState': shipment_data['province'],
         'shipToPostalCode': shipment_data['zip'],
         'shipToCountryCode': shipment_data['country_code'],
-        'shipToContactPhone': shipment_data['phone'],  # TODO maybe? shopify doesn't meed E.164
+        # TODO maybe? shopify doesn't meed E.164
+        'shipToContactPhone': shipment_data['phone'],
     }
 
+
 def extract_item_info(order_data):
-    item_data = order_data['line_items']
-    items = []
-    for item in item_data:
-        items.append({
-            'productCode': item['sku'],
-            'quantityToShip': item['quantity']
-        })
-    return items
+    return list(map(lambda item: {'productCode': item['sku'], 'quantityToShip': item['quantity']}, order_data['line_items']))
+
 
 def make_upward_api_call(endpoint, data):
     url = UPWARD_API_URL + endpoint
@@ -76,11 +74,13 @@ def status():
 @app.route('/create', methods=['POST'])
 def handle_webhook():
     data = request.get_data()
-
     app.logger.info('Webhook recieved')
 
     # verify webhook signature
-    verified = verify_webhook(data, request.headers.get('X-Shopify-Hmac-SHA256'))
+    verified = verify_webhook(
+        data,
+        request.headers.get('X-Shopify-Hmac-SHA256')
+    )
     if not verified:
         app.logger.error('Webhook verification failed!')
         abort(401)
@@ -91,14 +91,16 @@ def handle_webhook():
     order = {}
 
     order['_orderNumber'] = order_data['number']
-    order['orderDate'] = dateutil.parser.parse(order_data['created_at']).strftime('%m-%d-%Y')
+    order['orderDate'] = dateutil.parser.parse(
+        order_data['created_at']).strftime('%m-%d-%Y')
     order['shipment_info'] = extract_shipment_info(order_data)
     order['items'] = extract_item_info(order_data)
     order['customerID'] = order_data['email']
     app.logger.info('Webhook parsing complete')
     app.logger.info(order)
 
-    make_upward_api_call('Orders', order)
-    app.logger.info("Processing complete; order %s forwarded" % (order['_orderNumber']))
+    # make_upward_api_call('Orders', order)
+    app.logger.info("Processing complete; order %s forwarded" %
+                    (order['_orderNumber']))
 
     return ('Webhook verified & forwarded', 200)
