@@ -20,6 +20,9 @@ UPWARD_API_KEY = os.getenv('UPWARD_API_KEY', DEFAULT_SECRET)
 UPWARD_API_URL = os.getenv(
     'UPWARD_API_URL', 'https://sandbox.upwardlogistics.net/v1/')
 
+gunicorn_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers = gunicorn_logger.handlers
+app.logger.setLevel(gunicorn_logger.level)
 
 def verify_webhook(data, hmac_header):
     digest = hmac.new(SHOPIFY_SIGNING_SECRET.encode(
